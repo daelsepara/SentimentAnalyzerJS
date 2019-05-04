@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="robots" content="noindex">
+  <title>Sentiment Analyzer Demo</title>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.8/angular.min.js"></script>
+  <script src="SentimentAnalyzer.js"></script>
+</head>
+
+<body>
+	<div ng-app="SentimentAnalyzer">
+		<div ng-controller="SentimentAnalyzerController">
+			<div ng-init = "Initialize('Make sure you :) or :D today!');"></div>
+			<h2>Enter text</h2>
+			<textarea ng-model = "sentiment" rows="4" cols="60" style = "resize: none;"></textarea>
+			<br/><br/>
+			pos: <span>{{SentimentScores.pos}}</span> compound: <span>{{SentimentScores.compound}}</span> neu: <span>{{SentimentScores.neu}}</span> neg: <span>{{SentimentScores.neg}}</span>
+			<br/><br/>
+			<button type="button" ng-click = "PolarityScores(sentiment);">get sentiment score</button> 
+			<br/>
+			<h2>Select lexicon</h2>
+			<input type="file" onchange="angular.element(this).scope().MakeLexiconDictionary(this.files[0])"></input>
+		</div>
+	</div>
+</body>
+</html>
