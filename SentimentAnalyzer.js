@@ -1,50 +1,50 @@
 angular
-	.module('SentimentAnalyzer', []) 
-	.controller('SentimentAnalyzerController', ['$http', '$scope', '$filter', function($http, $scope, $filter) {  
+	.module('SentimentAnalyzer', [])
+	.controller('SentimentAnalyzerController', ['$http', '$scope', '$filter', function($http, $scope, $filter) {
 
 		// Identify sentiment-relevant string-level properties of input text
 		class SentimentText {
-			
+
 			constructor(text) {
 
 				this._text = text;
 				this.WordsAndEmoticons = this.WordsAndEmoticonsOnly();
 				this.IsAllCapsDifferential = this.AllCapsDifferential(this.WordsAndEmoticons);
 			}
-			
+
 			StripPunctuations() {
-				
+
 				return this._text.replace(/[^A-Za-z0-9_\s]/g, '');
 			}
-			
+
 			// Check whether just some words in the input are ALL CAPS
 			AllCapsDifferential(words) {
-				
-				var isUpperCase = function (str) {
-					
+
+				var isUpperCase = function(str) {
+
 					return str === str.toUpperCase();
 				}
-				
+
 				var AllCapsWords = 0;
-				
+
 				if (!Array.isArray(words))
 					return false;
-				
+
 				for (var i = 0; i < words.length; i++) {
-					
-					var word = words[i];							
-												
+
+					var word = words[i];
+
 					if (isUpperCase(word))
 						AllCapsWords++;
 				}
-				
+
 				var cap_differential = words.length - AllCapsWords;
-				
+
 				return cap_differential > 0 && cap_differential < words.length;
 			}
-			
+
 			WordsOnly() {
-				
+
 				// removes punctuation (but loses emoticons & contractions)
 				var modifiedText = (this.StripPunctuations()).trim();
 
@@ -54,10 +54,10 @@ angular
 				// get rid of empty items or single letter "words" like 'a' and 'I'
 				return words.filter(word => word.length > 1);
 			}
-			
+
 			WordsAndEmoticonsOnly() {
 
-				var PunctuationList = [ ".", "!", "?", ",", ";", ":", "-", "'", "\"", "!!", "!!!", "??", "???", "?!?", "!?!", "?!?!", "!?!?" ];
+				var PunctuationList = [".", "!", "?", ",", ";", ":", "-", "'", "\"", "!!", "!!!", "??", "???", "?!?", "!?!", "?!?!", "!?!?"];
 
 				// split on white space
 				var wordsAndEmoticons = this._text.split(/\s+/);
@@ -68,49 +68,51 @@ angular
 				var wordsOnly = this.WordsOnly();
 
 				var Count = function(words, word) {
-					
+
 					var counts = [];
-					
+
 					if (!Array.isArray(words))
 						return 0;
-					
+
 					for (var i = 0; i < words.length; i++) {
-						
+
 						var key = words[i];
 
 						if (key in counts) {
-							
+
 							counts[key]++;
-							
+
 						} else {
-							
-							counts[key] =  1;
+
+							counts[key] = 1;
 						}
 					}
-					
-					return (word in counts) ? counts[word] : 0; 
+
+					return (word in counts) ? counts[word] : 0;
 				}
-				
+
 				for (var i = 0; i < wordsOnly.length; i++) {
-					
+
 					var word = wordsOnly[i];
-					
+
 					for (var j = 0; j < PunctuationList.length; j++) {
-						
+
 						var punctuation = PunctuationList[j];
-						
+
 						// replace all punctuation + word combinations with word
 						var punctuationWord = punctuation.concat(word);
 
 						var x1 = Count(filtered, punctuationWord);
-						
+
 						while (x1 > 0) {
-							
+
 							//var index = filtered.find(punctuationWord);
-							var index = filtered.findIndex(function(word) { return word === punctuationWord; }, punctuationWord);
-							
+							var index = filtered.findIndex(function(word) {
+								return word === punctuationWord;
+							}, punctuationWord);
+
 							if (index >= 0) {
-								
+
 								filtered[index] = word;
 							}
 
@@ -119,16 +121,18 @@ angular
 
 						// do the same as above but word then punctuation
 						var wordPunctuation = word.concat(punctuation);
-						
+
 						var x2 = Count(filtered, wordPunctuation);
-						
+
 						while (x2 > 0) {
-							
+
 							//var index = filtered.find(wordPunctuation);
-							var index = filtered.findIndex(function(word) { return word === wordPunctuation; }, wordPunctuation);
+							var index = filtered.findIndex(function(word) {
+								return word === wordPunctuation;
+							}, wordPunctuation);
 
 							if (index >= 0) {
-								
+
 								filtered[index] = word;
 							}
 
@@ -136,574 +140,651 @@ angular
 						}
 					}
 				}
-				
+
 				return filtered;
 			}
 		};
-		
+
 		$http.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
-		
+
 		// (empirically derived mean sentiment intensity rating increase for booster words)
-        $scope.B_INCR = 0.293;
-        $scope.B_DECR = -0.293;
+		$scope.B_INCR = 0.293;
+		$scope.B_DECR = -0.293;
 
-        // (empirically derived mean sentiment intensity rating increase for using
-        // ALLCAPs to emphasize a word)
-        $scope.C_INCR = 0.733;
-        $scope.N_SCALAR = -0.74;
-       
-		$scope.NEGATE = [ "aint", "arent", "cannot", "cant", "couldnt", "darent", "didnt", "doesnt",
-            "ain't", "aren't", "can't", "couldn't", "daren't", "didn't", "doesn't",
-            "dont", "hadnt", "hasnt", "havent", "isnt", "mightnt", "mustnt", "neither",
-            "don't", "hadn't", "hasn't", "haven't", "isn't", "mightn't", "mustn't",
-            "neednt", "needn't", "never", "none", "nope", "nor", "not", "nothing", "nowhere",
-            "oughtnt", "shant", "shouldnt", "uhuh", "wasnt", "werent",
-            "oughtn't", "shan't", "shouldn't", "uh-uh", "wasn't", "weren't",
-            "without", "wont", "wouldnt", "won't", "wouldn't", "rarely", "seldom", "despite"
+		// (empirically derived mean sentiment intensity rating increase for using
+		// ALLCAPs to emphasize a word)
+		$scope.C_INCR = 0.733;
+		$scope.N_SCALAR = -0.74;
+
+		$scope.NEGATE = ["aint", "arent", "cannot", "cant", "couldnt", "darent", "didnt", "doesnt",
+			"ain't", "aren't", "can't", "couldn't", "daren't", "didn't", "doesn't",
+			"dont", "hadnt", "hasnt", "havent", "isnt", "mightnt", "mustnt", "neither",
+			"don't", "hadn't", "hasn't", "haven't", "isn't", "mightn't", "mustn't",
+			"neednt", "needn't", "never", "none", "nope", "nor", "not", "nothing", "nowhere",
+			"oughtnt", "shant", "shouldnt", "uhuh", "wasnt", "werent",
+			"oughtn't", "shan't", "shouldn't", "uh-uh", "wasn't", "weren't",
+			"without", "wont", "wouldnt", "won't", "wouldn't", "rarely", "seldom", "despite"
 		];
-		
-        //booster/dampener 'intensifiers' or 'degree adverbs'
-        //http://en.wiktionary.org/wiki/Category:English_degree_adverbs
-        
-		$scope.BOOSTER_DICT = {
-             "absolutely": $scope.B_INCR ,  "amazingly": $scope.B_INCR ,  "awfully": $scope.B_INCR ,  "completely": $scope.B_INCR ,
-             "considerably": $scope.B_INCR ,  "decidedly": $scope.B_INCR ,  "deeply": $scope.B_INCR ,  "effing": $scope.B_INCR ,
-             "enormously": $scope.B_INCR ,  "entirely": $scope.B_INCR ,  "especially": $scope.B_INCR ,  "exceptionally": $scope.B_INCR ,
-             "extremely": $scope.B_INCR ,  "fabulously": $scope.B_INCR ,  "flipping": $scope.B_INCR ,  "flippin": $scope.B_INCR ,
-             "fricking": $scope.B_INCR ,  "frickin": $scope.B_INCR ,  "frigging": $scope.B_INCR ,  "friggin": $scope.B_INCR ,
-             "fully": $scope.B_INCR ,  "fucking": $scope.B_INCR ,  "greatly": $scope.B_INCR ,  "hella": $scope.B_INCR ,
-             "highly": $scope.B_INCR ,  "hugely": $scope.B_INCR ,  "incredibly": $scope.B_INCR ,  "intensely": $scope.B_INCR ,
-             "majorly": $scope.B_INCR ,  "more": $scope.B_INCR ,  "most": $scope.B_INCR ,  "particularly": $scope.B_INCR ,
-             "purely": $scope.B_INCR ,  "quite": $scope.B_INCR ,  "really": $scope.B_INCR ,  "remarkably": $scope.B_INCR ,
-             "so": $scope.B_INCR ,  "substantially": $scope.B_INCR ,  "thoroughly": $scope.B_INCR ,  "totally": $scope.B_INCR ,
-             "tremendously": $scope.B_INCR ,  "uber": $scope.B_INCR ,  "unbelievably": $scope.B_INCR ,  "unusually": $scope.B_INCR ,
-             "utterly": $scope.B_INCR ,  "very": $scope.B_INCR ,  "almost": $scope.B_DECR ,  "barely": $scope.B_DECR ,  "hardly": $scope.B_DECR ,  "just enough": $scope.B_DECR ,
-             "kind of": $scope.B_DECR ,  "kinda": $scope.B_DECR ,  "kindof": $scope.B_DECR ,  "kind-of": $scope.B_DECR ,  "less": $scope.B_DECR ,  "little": $scope.B_DECR ,
-             "marginally": $scope.B_DECR ,  "occasionally": $scope.B_DECR ,  "partly": $scope.B_DECR ,  "scarcely": $scope.B_DECR ,  "slightly": $scope.B_DECR ,
-             "somewhat": $scope.B_DECR ,  "sort of": $scope.B_DECR ,  "sorta": $scope.B_DECR ,  "sortof": $scope.B_DECR ,  "sort-of": $scope.B_DECR 
-        };
-        
-        // check for special case idioms using a sentiment-laden keyword known to SAGE
-        $scope.SPECIAL_CASE_IDIOMS = {
-			"the shit": 3 , "the bomb": 3 , "bad ass": 1.5 , "yeah right": -2 ,
-             "cut the mustard": 2 , "kiss of death": -1.5 , "hand to mouth": -2 
-        };
-        
-        $scope.Normalize = function(score, alpha = 15.0) {
-			
-			var normalizedScore = score / Math.sqrt((score * score) + alpha);
-			
-			if (normalizedScore < -1.0) {
-                return -1.0;
-            }
 
-            if (normalizedScore > 1.0) {
-				
-                return 1.0;
-            }
-            
-            return normalizedScore;
+		//booster/dampener 'intensifiers' or 'degree adverbs'
+		//http://en.wiktionary.org/wiki/Category:English_degree_adverbs
+
+		$scope.BOOSTER_DICT = {
+			"absolutely": $scope.B_INCR,
+			"amazingly": $scope.B_INCR,
+			"awfully": $scope.B_INCR,
+			"completely": $scope.B_INCR,
+			"considerably": $scope.B_INCR,
+			"decidedly": $scope.B_INCR,
+			"deeply": $scope.B_INCR,
+			"effing": $scope.B_INCR,
+			"enormously": $scope.B_INCR,
+			"entirely": $scope.B_INCR,
+			"especially": $scope.B_INCR,
+			"exceptionally": $scope.B_INCR,
+			"extremely": $scope.B_INCR,
+			"fabulously": $scope.B_INCR,
+			"flipping": $scope.B_INCR,
+			"flippin": $scope.B_INCR,
+			"fricking": $scope.B_INCR,
+			"frickin": $scope.B_INCR,
+			"frigging": $scope.B_INCR,
+			"friggin": $scope.B_INCR,
+			"fully": $scope.B_INCR,
+			"fucking": $scope.B_INCR,
+			"greatly": $scope.B_INCR,
+			"hella": $scope.B_INCR,
+			"highly": $scope.B_INCR,
+			"hugely": $scope.B_INCR,
+			"incredibly": $scope.B_INCR,
+			"intensely": $scope.B_INCR,
+			"majorly": $scope.B_INCR,
+			"more": $scope.B_INCR,
+			"most": $scope.B_INCR,
+			"particularly": $scope.B_INCR,
+			"purely": $scope.B_INCR,
+			"quite": $scope.B_INCR,
+			"really": $scope.B_INCR,
+			"remarkably": $scope.B_INCR,
+			"so": $scope.B_INCR,
+			"substantially": $scope.B_INCR,
+			"thoroughly": $scope.B_INCR,
+			"totally": $scope.B_INCR,
+			"tremendously": $scope.B_INCR,
+			"uber": $scope.B_INCR,
+			"unbelievably": $scope.B_INCR,
+			"unusually": $scope.B_INCR,
+			"utterly": $scope.B_INCR,
+			"very": $scope.B_INCR,
+			"almost": $scope.B_DECR,
+			"barely": $scope.B_DECR,
+			"hardly": $scope.B_DECR,
+			"just enough": $scope.B_DECR,
+			"kind of": $scope.B_DECR,
+			"kinda": $scope.B_DECR,
+			"kindof": $scope.B_DECR,
+			"kind-of": $scope.B_DECR,
+			"less": $scope.B_DECR,
+			"little": $scope.B_DECR,
+			"marginally": $scope.B_DECR,
+			"occasionally": $scope.B_DECR,
+			"partly": $scope.B_DECR,
+			"scarcely": $scope.B_DECR,
+			"slightly": $scope.B_DECR,
+			"somewhat": $scope.B_DECR,
+			"sort of": $scope.B_DECR,
+			"sorta": $scope.B_DECR,
+			"sortof": $scope.B_DECR,
+			"sort-of": $scope.B_DECR
 		};
-		
+
+		// check for special case idioms using a sentiment-laden keyword known to SAGE
+		$scope.SPECIAL_CASE_IDIOMS = {
+			"the shit": 3,
+			"the bomb": 3,
+			"bad ass": 1.5,
+			"yeah right": -2,
+			"cut the mustard": 2,
+			"kiss of death": -1.5,
+			"hand to mouth": -2
+		};
+
+		$scope.Normalize = function(score, alpha = 15.0) {
+
+			var normalizedScore = score / Math.sqrt((score * score) + alpha);
+
+			if (normalizedScore < -1.0) {
+				return -1.0;
+			}
+
+			if (normalizedScore > 1.0) {
+
+				return 1.0;
+			}
+
+			return normalizedScore;
+		};
+
 		$scope.LexiconFile = "";
 		$scope.Lexicon = {};
 		$scope.CurrentSentimentText = {};
 		$scope.SentimentScores = {};
-		
+
 		$scope.Initialize = function(text) {
-			
+
 		};
-		
+
 		$scope.MakeLexiconDictionary = function(file) {
-			
+
 			var reader = new FileReader();
-			
+
 			reader.onload = function(progressEvent) {
-				
+
 				var lines = this.result.split('\n');
-				
+
 				for (var line = 0; line < lines.length; line++) {
-					
+
 					var tokens = lines[line].split('\t');
 
 					if (tokens.length >= 2) {
-						
+
 						var word = tokens[0];
 						var measure = parseFloat(tokens[1]);
-						
-						$scope.Lexicon[word] =  measure;
+
+						$scope.Lexicon[word] = measure;
 					}
 				}
 			}
-			
+
 			reader.readAsText(file);
 		};
-		
+
 		$scope.PolarityScores = function(text) {
-			
-            // TODO: convert emojis to their textual descriptions and add to text
 
-            $scope.CurrentSentimentText = new SentimentText(text);
+			// TODO: convert emojis to their textual descriptions and add to text
 
-            var sentiments = [];
+			$scope.CurrentSentimentText = new SentimentText(text);
 
-            var words_and_emoticons = $scope.CurrentSentimentText.WordsAndEmoticons;
+			var sentiments = [];
 
-            for (var i = 0; i < words_and_emoticons.length; i++) {
-				
-                var valence = 0.0;
+			var words_and_emoticons = $scope.CurrentSentimentText.WordsAndEmoticons;
 
-                var item = words_and_emoticons[i];
+			for (var i = 0; i < words_and_emoticons.length; i++) {
 
-                // check for vader_lexicon words that may be used as modifiers or negations
-                if (item.toLowerCase() in $scope.BOOSTER_DICT) {
-					
-                    sentiments.push(valence);
+				var valence = 0.0;
 
-                    continue;
-                }
+				var item = words_and_emoticons[i];
 
-                if (i < words_and_emoticons.length - 1 && item.toLowerCase() === "kind" && words_and_emoticons[i + 1].toLowerCase() === "of") {
-                    
-                    sentiments.push(valence);
+				// check for vader_lexicon words that may be used as modifiers or negations
+				if (item.toLowerCase() in $scope.BOOSTER_DICT) {
 
-                    continue;
-                }
+					sentiments.push(valence);
 
-                sentiments = $scope.SentimentValence(valence, item, i, sentiments);
-            }
+					continue;
+				}
+
+				if (i < words_and_emoticons.length - 1 && item.toLowerCase() === "kind" && words_and_emoticons[i + 1].toLowerCase() === "of") {
+
+					sentiments.push(valence);
+
+					continue;
+				}
+
+				sentiments = $scope.SentimentValence(valence, item, i, sentiments);
+			}
 
 			var sentimentScores = $scope.ScoreValence($scope.ButCheck(words_and_emoticons, sentiments), text);
-			
-            $scope.SentimentScores = sentimentScores;
-        };
-        
+
+			$scope.SentimentScores = sentimentScores;
+		};
+
 		$scope.ScoreValence = function(sentiments, text) {
-			
-            var compound = 0.0;
-            var pos = 0.0;
-            var neg = 0.0;
-            var neu = 0.0;
-			
+
+			var compound = 0.0;
+			var pos = 0.0;
+			var neg = 0.0;
+			var neu = 0.0;
+
 			const Sum = arr => arr.reduce((a, b) => a + b, 0.0);
-			
-            if (sentiments.length > 0) {
-				
-                var sum_s = Sum(sentiments);
 
-                // compute and add emphasis from punctuation in text
-                var punct_emph_amplifier = $scope.PunctuationEmphasis(text);
+			if (sentiments.length > 0) {
 
-                if (sum_s > 0) {
-					
-                    sum_s += punct_emph_amplifier;
-                    
-                } else if (sum_s < 0) {
-					
-                    sum_s -= punct_emph_amplifier;
-                }
+				var sum_s = Sum(sentiments);
 
-                compound = $scope.Normalize(sum_s);
+				// compute and add emphasis from punctuation in text
+				var punct_emph_amplifier = $scope.PunctuationEmphasis(text);
 
-                // discriminate between positive, negative and neutral sentiment scores
-                var scores = $scope.SiftSentimentScores(sentiments);
-                var pos_sum = scores["pos_sum"];
-                var neg_sum = scores["neg_sum"];
-                var neu_count = scores["neu_count"];
+				if (sum_s > 0) {
 
-                if (pos_sum > Math.abs(neg_sum)) {
-					
-                    pos_sum += punct_emph_amplifier;
-                    
-                } else if (pos_sum < Math.abs(neg_sum)) {
-					
-                    neg_sum -= punct_emph_amplifier;
-                }
+					sum_s += punct_emph_amplifier;
 
-                var total = pos_sum + Math.abs(neg_sum) + neu_count;
+				} else if (sum_s < 0) {
 
-                pos = Math.abs(pos_sum / total);
-                neg = Math.abs(neg_sum / total);
-                neu = Math.abs(neu_count / total);
-            }
+					sum_s -= punct_emph_amplifier;
+				}
 
-            return { neg: neg.toFixed(3), neu: neu.toFixed(3), pos: pos.toFixed(3), compound: compound.toFixed(4)};
-        };
-        
+				compound = $scope.Normalize(sum_s);
+
+				// discriminate between positive, negative and neutral sentiment scores
+				var scores = $scope.SiftSentimentScores(sentiments);
+				var pos_sum = scores["pos_sum"];
+				var neg_sum = scores["neg_sum"];
+				var neu_count = scores["neu_count"];
+
+				if (pos_sum > Math.abs(neg_sum)) {
+
+					pos_sum += punct_emph_amplifier;
+
+				} else if (pos_sum < Math.abs(neg_sum)) {
+
+					neg_sum -= punct_emph_amplifier;
+				}
+
+				var total = pos_sum + Math.abs(neg_sum) + neu_count;
+
+				pos = Math.abs(pos_sum / total);
+				neg = Math.abs(neg_sum / total);
+				neu = Math.abs(neu_count / total);
+			}
+
+			return {
+				neg: neg.toFixed(3),
+				neu: neu.toFixed(3),
+				pos: pos.toFixed(3),
+				compound: compound.toFixed(4)
+			};
+		};
+
 		$scope.SentimentValence = function(valence, item, i, sentiments) {
-			
-			var isUpperCase = function (str) {
-					
+
+			var isUpperCase = function(str) {
+
 				return str === str.toUpperCase();
 			};
-			
-            var adjustedValence = valence;
 
-            var IsCapDifferential = $scope.CurrentSentimentText.IsAllCapsDifferential;
-            var words_and_emoticons = $scope.CurrentSentimentText.WordsAndEmoticons;
-            var item_lowercase = item.toLowerCase();
+			var adjustedValence = valence;
 
-            if (item_lowercase in $scope.Lexicon) {
-				
-                // get the sentiment valence
-                adjustedValence = $scope.Lexicon[item_lowercase];
+			var IsCapDifferential = $scope.CurrentSentimentText.IsAllCapsDifferential;
+			var words_and_emoticons = $scope.CurrentSentimentText.WordsAndEmoticons;
+			var item_lowercase = item.toLowerCase();
 
-                // check if sentiment laden word is in ALL CAPS (while others aren't)
-                if (isUpperCase(item) && IsCapDifferential) {
-					
-                    if (adjustedValence > 0) {
-						
-                        adjustedValence += $scope.C_INCR;
-                        
-                    } else {
-						
-                        adjustedValence -= $scope.C_INCR;
-                    }
-                }
-				
-                for (var start_i = 0; start_i < 3; start_i++) {
-					
-                    // dampen the scalar modifier of preceding words and emoticons
-                    // (excluding the ones that immediately preceed the item) based
-                    // on their distance from the current item.
-                    
-                    if (i > start_i && !(words_and_emoticons[i - (start_i + 1)].toLowerCase() in $scope.Lexicon)) {
-						
-                        var s = $scope.ScalarIncDec(words_and_emoticons[i - (start_i + 1)], adjustedValence, IsCapDifferential);
-						
-                        if (start_i == 1 && Math.abs(s) > Number.EPSILON) {
-							
-                            s = s * 0.95;
-                        }
+			if (item_lowercase in $scope.Lexicon) {
 
-                        if (start_i == 2 && Math.abs(s) > Number.EPSILON) {
-							
-                            s = s * 0.9;
-                        }
+				// get the sentiment valence
+				adjustedValence = $scope.Lexicon[item_lowercase];
 
-                        adjustedValence += s;
-						
-                        adjustedValence = $scope.NegationCheck(adjustedValence, words_and_emoticons, start_i, i);
-                        
-                        if (start_i == 2) {
-							
-                            adjustedValence = $scope.SpecialIdiomsCheck(adjustedValence, words_and_emoticons, i);
-                        }
-                    }
-                }
-                
-                adjustedValence = $scope.LeastCheck(adjustedValence, words_and_emoticons, i);
-            }
+				// check if sentiment laden word is in ALL CAPS (while others aren't)
+				if (isUpperCase(item) && IsCapDifferential) {
 
-            sentiments.push(adjustedValence);
+					if (adjustedValence > 0) {
 
-            return sentiments;
-        };
-        
+						adjustedValence += $scope.C_INCR;
+
+					} else {
+
+						adjustedValence -= $scope.C_INCR;
+					}
+				}
+
+				for (var start_i = 0; start_i < 3; start_i++) {
+
+					// dampen the scalar modifier of preceding words and emoticons
+					// (excluding the ones that immediately preceed the item) based
+					// on their distance from the current item.
+
+					if (i > start_i && !(words_and_emoticons[i - (start_i + 1)].toLowerCase() in $scope.Lexicon)) {
+
+						var s = $scope.ScalarIncDec(words_and_emoticons[i - (start_i + 1)], adjustedValence, IsCapDifferential);
+
+						if (start_i == 1 && Math.abs(s) > Number.EPSILON) {
+
+							s = s * 0.95;
+						}
+
+						if (start_i == 2 && Math.abs(s) > Number.EPSILON) {
+
+							s = s * 0.9;
+						}
+
+						adjustedValence += s;
+
+						adjustedValence = $scope.NegationCheck(adjustedValence, words_and_emoticons, start_i, i);
+
+						if (start_i == 2) {
+
+							adjustedValence = $scope.SpecialIdiomsCheck(adjustedValence, words_and_emoticons, i);
+						}
+					}
+				}
+
+				adjustedValence = $scope.LeastCheck(adjustedValence, words_and_emoticons, i);
+			}
+
+			sentiments.push(adjustedValence);
+
+			return sentiments;
+		};
+
 		$scope.NegationCheck = function(valence, words_and_emoticons, start_i, i) {
-			
-            var adjustedValence = valence;
 
-            var words_and_emoticons_lower = words_and_emoticons.map(function(word) { return word.toLowerCase() });
+			var adjustedValence = valence;
 
-            if (start_i == 0) {
-				
-                if ($scope.IsNegated([words_and_emoticons_lower[i - (start_i + 1)]])) {
-					
-                    adjustedValence *= $scope.N_SCALAR;
-                }
-            }
+			var words_and_emoticons_lower = words_and_emoticons.map(function(word) {
+				return word.toLowerCase()
+			});
 
-            if (start_i == 1) {
-				
-                if (words_and_emoticons_lower[i - 2] === "never" && (words_and_emoticons_lower[i - 1] === "so" || words_and_emoticons_lower[i - 1] === "this")) {
-                    
-                    adjustedValence *= 1.25;
-                    
-                } else if (words_and_emoticons_lower[i - 2] === "without" && words_and_emoticons_lower[i - 1] === "doubt") {
+			if (start_i == 0) {
 
-                } else if ($scope.IsNegated([ words_and_emoticons_lower[i - (start_i + 1)]])) {
-					
-                    adjustedValence *= $scope.N_SCALAR;
-                }
-            }
+				if ($scope.IsNegated([words_and_emoticons_lower[i - (start_i + 1)]])) {
 
-            if (start_i == 2) {
-				
-                if (words_and_emoticons_lower[i - 3] === "never" &&
-                    (words_and_emoticons_lower[i - 2] === "so" || words_and_emoticons_lower[i - 2] === "this") ||
-                    (words_and_emoticons_lower[i - 1] === "so" || words_and_emoticons_lower[i - 1] === "this")) {
-                    
-                    adjustedValence *= 1.25;
-                    
-                } else if (words_and_emoticons_lower[i - 3] === "without" && (words_and_emoticons_lower[i - 2] === "doubt" || words_and_emoticons_lower[i - 1] === "doubt")) {
+					adjustedValence *= $scope.N_SCALAR;
+				}
+			}
 
-                } else if ($scope.IsNegated([words_and_emoticons_lower[i - (start_i + 1)]])) {
-                    
-                    adjustedValence *= $scope.N_SCALAR;
-                }
-            }
+			if (start_i == 1) {
 
-            return adjustedValence;
-        };
-        
+				if (words_and_emoticons_lower[i - 2] === "never" && (words_and_emoticons_lower[i - 1] === "so" || words_and_emoticons_lower[i - 1] === "this")) {
+
+					adjustedValence *= 1.25;
+
+				} else if (words_and_emoticons_lower[i - 2] === "without" && words_and_emoticons_lower[i - 1] === "doubt") {
+
+				} else if ($scope.IsNegated([words_and_emoticons_lower[i - (start_i + 1)]])) {
+
+					adjustedValence *= $scope.N_SCALAR;
+				}
+			}
+
+			if (start_i == 2) {
+
+				if (words_and_emoticons_lower[i - 3] === "never" &&
+					(words_and_emoticons_lower[i - 2] === "so" || words_and_emoticons_lower[i - 2] === "this") ||
+					(words_and_emoticons_lower[i - 1] === "so" || words_and_emoticons_lower[i - 1] === "this")) {
+
+					adjustedValence *= 1.25;
+
+				} else if (words_and_emoticons_lower[i - 3] === "without" && (words_and_emoticons_lower[i - 2] === "doubt" || words_and_emoticons_lower[i - 1] === "doubt")) {
+
+				} else if ($scope.IsNegated([words_and_emoticons_lower[i - (start_i + 1)]])) {
+
+					adjustedValence *= $scope.N_SCALAR;
+				}
+			}
+
+			return adjustedValence;
+		};
+
 		$scope.SpecialIdiomsCheck = function(valence, words_and_emoticons, i) {
-			
-            var adjustedValence = valence;
 
-            var words_and_emoticons_lower = words_and_emoticons.map(function(word) { return word.toLowerCase() });
+			var adjustedValence = valence;
 
-            var onezero = words_and_emoticons_lower[i - 1] + " " + words_and_emoticons_lower[i];
-            var twoonezero = words_and_emoticons_lower[i - 2] + " " + words_and_emoticons_lower[i - 1] + " " + words_and_emoticons_lower[i - 0];
-            var twoone = words_and_emoticons_lower[i - 2] + " " + words_and_emoticons_lower[i - 1];
-            var threetwoone = words_and_emoticons_lower[i - 3] + " " + words_and_emoticons_lower[i - 2] + " " + words_and_emoticons_lower[i - 1];
-            var threetwo = words_and_emoticons_lower[i - 3] + " " + words_and_emoticons_lower[i - 2];
+			var words_and_emoticons_lower = words_and_emoticons.map(function(word) {
+				return word.toLowerCase()
+			});
 
-            var sequences = [ onezero, twoonezero, twoone, threetwoone, threetwo ];
+			var onezero = words_and_emoticons_lower[i - 1] + " " + words_and_emoticons_lower[i];
+			var twoonezero = words_and_emoticons_lower[i - 2] + " " + words_and_emoticons_lower[i - 1] + " " + words_and_emoticons_lower[i - 0];
+			var twoone = words_and_emoticons_lower[i - 2] + " " + words_and_emoticons_lower[i - 1];
+			var threetwoone = words_and_emoticons_lower[i - 3] + " " + words_and_emoticons_lower[i - 2] + " " + words_and_emoticons_lower[i - 1];
+			var threetwo = words_and_emoticons_lower[i - 3] + " " + words_and_emoticons_lower[i - 2];
 
-            for (var j = 0; j < sequences.length; j++) {
-				
+			var sequences = [onezero, twoonezero, twoone, threetwoone, threetwo];
+
+			for (var j = 0; j < sequences.length; j++) {
+
 				var seq = sequences[j];
-				
-                if (seq in $scope.SPECIAL_CASE_IDIOMS) {
-					
-                    adjustedValence = $scope.SPECIAL_CASE_IDIOMS[seq];
 
-                    break;
-                }
-            }
+				if (seq in $scope.SPECIAL_CASE_IDIOMS) {
 
-            if (words_and_emoticons_lower.length - 1 > i) {
-				
-                var zeroone = words_and_emoticons_lower[i] + " " + words_and_emoticons_lower[i + 1];
+					adjustedValence = $scope.SPECIAL_CASE_IDIOMS[seq];
 
-                if (zeroone in $scope.SPECIAL_CASE_IDIOMS) {
-					
-                    adjustedValence = $scope.SPECIAL_CASE_IDIOMS[zeroone];
-                }
-            }
+					break;
+				}
+			}
 
-            if (words_and_emoticons_lower.length - 1 > i + 1) {
-				
-                var zeroonetwo = words_and_emoticons_lower[i] + " " + words_and_emoticons_lower[i + 1] + " " + words_and_emoticons_lower[i + 2];
+			if (words_and_emoticons_lower.length - 1 > i) {
 
-                if (zeroonetwo in $scope.SPECIAL_CASE_IDIOMS) {
-					
-                    adjustedValence = $scope.SPECIAL_CASE_IDIOMS[zeroonetwo];
-                }
-            }
+				var zeroone = words_and_emoticons_lower[i] + " " + words_and_emoticons_lower[i + 1];
 
-            var n_grams = [ threetwoone, threetwo, twoone ];
+				if (zeroone in $scope.SPECIAL_CASE_IDIOMS) {
+
+					adjustedValence = $scope.SPECIAL_CASE_IDIOMS[zeroone];
+				}
+			}
+
+			if (words_and_emoticons_lower.length - 1 > i + 1) {
+
+				var zeroonetwo = words_and_emoticons_lower[i] + " " + words_and_emoticons_lower[i + 1] + " " + words_and_emoticons_lower[i + 2];
+
+				if (zeroonetwo in $scope.SPECIAL_CASE_IDIOMS) {
+
+					adjustedValence = $scope.SPECIAL_CASE_IDIOMS[zeroonetwo];
+				}
+			}
+
+			var n_grams = [threetwoone, threetwo, twoone];
 
 			for (var j = 0; j < n_grams.length; j++) {
-				
+
 				var n_gram = n_grams[j];
-				
-                if (n_gram in $scope.BOOSTER_DICT) {
-					
-                    adjustedValence += $scope.BOOSTER_DICT[n_gram];
-                }
-            }
 
-            return adjustedValence;
-        };
-        
+				if (n_gram in $scope.BOOSTER_DICT) {
+
+					adjustedValence += $scope.BOOSTER_DICT[n_gram];
+				}
+			}
+
+			return adjustedValence;
+		};
+
 		$scope.LeastCheck = function(valence, words_and_emoticons, i) {
-			
-            var adjustedValence = valence;
 
-            if (i > 1 && !(words_and_emoticons[i - 1].toLowerCase() in $scope.Lexicon) && words_and_emoticons[i - 1].toLowerCase() === "least") {
-				
-                if (words_and_emoticons[i - 2].toLowerCase() !== "at" && !words_and_emoticons[i - 2].toLowerCase() !== "very") {
-					
-                    adjustedValence *= $scope.N_SCALAR;
-                }
-                
-            } else if (i > 0 && !(words_and_emoticons[i - 1].toLowerCase() in $scope.Lexicon) && words_and_emoticons[i - 1].toLowerCase() === "least") {
-                
-                adjustedValence *= $scope.N_SCALAR;
-            }
+			var adjustedValence = valence;
 
-            return adjustedValence;
-        };
-        
+			if (i > 1 && !(words_and_emoticons[i - 1].toLowerCase() in $scope.Lexicon) && words_and_emoticons[i - 1].toLowerCase() === "least") {
+
+				if (words_and_emoticons[i - 2].toLowerCase() !== "at" && !words_and_emoticons[i - 2].toLowerCase() !== "very") {
+
+					adjustedValence *= $scope.N_SCALAR;
+				}
+
+			} else if (i > 0 && !(words_and_emoticons[i - 1].toLowerCase() in $scope.Lexicon) && words_and_emoticons[i - 1].toLowerCase() === "least") {
+
+				adjustedValence *= $scope.N_SCALAR;
+			}
+
+			return adjustedValence;
+		};
+
 		$scope.IsNegated = function(input_words, include_nt = true) {
-			
-            var input_words_lower = input_words.map(function(word) { return word.toLowerCase() });
 
-            for (var i = 0; i < $scope.NEGATE.length; i++) {
-				
+			var input_words_lower = input_words.map(function(word) {
+				return word.toLowerCase()
+			});
+
+			for (var i = 0; i < $scope.NEGATE.length; i++) {
+
 				var word = $scope.NEGATE[i];
-				
+
 				if (input_words_lower.indexOf(word) > -1)
 					return true;
-            }
+			}
 
-            if (include_nt)  {
-				
+			if (include_nt) {
+
 				for (var i = 0; i < input_words_lower.length; i++) {
-				
+
 					var word = input_words_lower[i];
-					
+
 					if ((word.match("n't") || []).length > 0)
 						return true;
 				}
 			}
 
-            if (input_words_lower.indexOf("least") > -1) {
-				
-                var i = input_words.findIndex(function(word) { return word === "least"; });
+			if (input_words_lower.indexOf("least") > -1) {
 
-                if (i > 0 && input_words[i - 1] !== "at" ) {
-					
-                    return true;
-                }
-            }
+				var i = input_words.findIndex(function(word) {
+					return word === "least";
+				});
 
-            return false;
-        };
-        
+				if (i > 0 && input_words[i - 1] !== "at") {
+
+					return true;
+				}
+			}
+
+			return false;
+		};
+
 		$scope.ScalarIncDec = function(word, valence, IsCapDifferential) {
-			
-            var scalar = 0.0;
-            var lowercase = word.toLowerCase();
-			
+
+			var scalar = 0.0;
+			var lowercase = word.toLowerCase();
+
 			var isUpperCase = function(str) {
-				
+
 				return str === str.toUpperCase();
 			}
-				
-            if (lowercase in $scope.BOOSTER_DICT) {
-				
-                scalar = $scope.BOOSTER_DICT[lowercase];
 
-                if (valence < 0) {
-					
-                    scalar *= -1;
-                }
+			if (lowercase in $scope.BOOSTER_DICT) {
 
-                // check if booster/dampener word is in ALLCAPS (while others aren't)
-                if (isUpperCase(word) && IsCapDifferential) {
-					
-                    if (valence > 0) {
-						
-                        scalar += $scope.C_INCR;
-                        
-                    } else {
-						
-                        scalar -= $scope.C_INCR;
-                    }
-                }
-            }
+				scalar = $scope.BOOSTER_DICT[lowercase];
 
-            return scalar;
-        };
-        
+				if (valence < 0) {
+
+					scalar *= -1;
+				}
+
+				// check if booster/dampener word is in ALLCAPS (while others aren't)
+				if (isUpperCase(word) && IsCapDifferential) {
+
+					if (valence > 0) {
+
+						scalar += $scope.C_INCR;
+
+					} else {
+
+						scalar -= $scope.C_INCR;
+					}
+				}
+			}
+
+			return scalar;
+		};
+
 		$scope.ButCheck = function(words_and_emoticons, sentiments) {
-			
-            // check for modification in sentiment due to contrastive conjunction 'but'
-            var words_and_emoticons_lower = words_and_emoticons.map(function(word) { return word.toLowerCase() });
-            
-            var bi = words_and_emoticons_lower.findIndex(function(word) { return word === "but"; });
 
-            if (bi >= 0) {
-				
-                for (var si = 0; si < sentiments.length; si++) {
-					
-                    if (si < bi) {
-						
-                        sentiments[si] *= 0.5;
-                        
-                    } else if (si > bi) {
-						
-                        sentiments[si] *= 1.5;
-                    }
-                }
-            }
+			// check for modification in sentiment due to contrastive conjunction 'but'
+			var words_and_emoticons_lower = words_and_emoticons.map(function(word) {
+				return word.toLowerCase()
+			});
 
-            return sentiments;
-        };
-        
+			var bi = words_and_emoticons_lower.findIndex(function(word) {
+				return word === "but";
+			});
+
+			if (bi >= 0) {
+
+				for (var si = 0; si < sentiments.length; si++) {
+
+					if (si < bi) {
+
+						sentiments[si] *= 0.5;
+
+					} else if (si > bi) {
+
+						sentiments[si] *= 1.5;
+					}
+				}
+			}
+
+			return sentiments;
+		};
+
 		$scope.PunctuationEmphasis = function(text) {
-			
-            // add emphasis from exclamation points and question marks
-            var ep_amplifier = $scope.AmplifyEP(text);
-            var qm_amplifier = $scope.AmplifyQM(text);
-            var punct_emph_amplifier = ep_amplifier + qm_amplifier;
 
-            return punct_emph_amplifier;
-        };
-        
+			// add emphasis from exclamation points and question marks
+			var ep_amplifier = $scope.AmplifyEP(text);
+			var qm_amplifier = $scope.AmplifyQM(text);
+			var punct_emph_amplifier = ep_amplifier + qm_amplifier;
+
+			return punct_emph_amplifier;
+		};
+
 		$scope.AmplifyEP = function(text) {
-			
-            // check for added emphasis resulting from exclamation points (up to 4 of them)
-            var ep_count = (text.match(/!/g) || []).length;
 
-            if (ep_count > 4) {
-				
-                ep_count = 4;
-            }
+			// check for added emphasis resulting from exclamation points (up to 4 of them)
+			var ep_count = (text.match(/!/g) || []).length;
 
-            // (empirically derived mean sentiment intensity rating increase for
-            // exclamation points)
-            var ep_amplifier = ep_count * 0.292;
+			if (ep_count > 4) {
 
-            return ep_amplifier;
-        };
-        
+				ep_count = 4;
+			}
+
+			// (empirically derived mean sentiment intensity rating increase for
+			// exclamation points)
+			var ep_amplifier = ep_count * 0.292;
+
+			return ep_amplifier;
+		};
+
 		$scope.AmplifyQM = function(text) {
-			
-            // check for added emphasis resulting from question marks (2 or 3+)
-            var qm_count = (text.match(/\?/g) || []).length;
-            var qm_amplifier = 0.0;
 
-            if (qm_count > 1) {
-				
-                if (qm_count <= 3) {
-					
-                    // (empirically derived mean sentiment intensity rating increase for
-                    // question marks)
-                    qm_amplifier = qm_count * 0.18;
-                    
-                } else {
-                    
-                    qm_amplifier = 0.96;
-                }
-            }
-            
-            return qm_amplifier;
-        };
-        
-        $scope.SiftSentimentScores = function(sentiments) {
-			
-            // want separate positive versus negative sentiment scores
-            var pos_sum = 0.0;
-            var neg_sum = 0.0;
-            var neu_count = 0;
+			// check for added emphasis resulting from question marks (2 or 3+)
+			var qm_count = (text.match(/\?/g) || []).length;
+			var qm_amplifier = 0.0;
+
+			if (qm_count > 1) {
+
+				if (qm_count <= 3) {
+
+					// (empirically derived mean sentiment intensity rating increase for
+					// question marks)
+					qm_amplifier = qm_count * 0.18;
+
+				} else {
+
+					qm_amplifier = 0.96;
+				}
+			}
+
+			return qm_amplifier;
+		};
+
+		$scope.SiftSentimentScores = function(sentiments) {
+
+			// want separate positive versus negative sentiment scores
+			var pos_sum = 0.0;
+			var neg_sum = 0.0;
+			var neu_count = 0;
 
 			for (var i = 0; i < sentiments.length; i++) {
-				
-				var sentiment_score = sentiments[i];
-				
-                if (sentiment_score > 0) {
-					
-					pos_sum += sentiment_score + 1; // compensates for neutral words that are counted as 1
-					
-                } else if (sentiment_score < 0) {
-					
-					neg_sum += sentiment_score - 1; // when used with math.fabs(), compensates for neutrals
-					
-                } else {
-					
-                    neu_count += 1;
-                }
-            }
 
-            return { pos_sum: pos_sum, neg_sum: neg_sum, neu_count: neu_count };
-        };
-        
-        $scope.Lexicon = {
-        
+				var sentiment_score = sentiments[i];
+
+				if (sentiment_score > 0) {
+
+					pos_sum += sentiment_score + 1; // compensates for neutral words that are counted as 1
+
+				} else if (sentiment_score < 0) {
+
+					neg_sum += sentiment_score - 1; // when used with math.fabs(), compensates for neutrals
+
+				} else {
+
+					neu_count += 1;
+				}
+			}
+
+			return {
+				pos_sum: pos_sum,
+				neg_sum: neg_sum,
+				neu_count: neu_count
+			};
+		};
+
+		$scope.Lexicon = {
+
 			"$:": -1.5,
 			"%)": -0.4,
 			"%-)": -1.5,
@@ -825,7 +906,7 @@ angular
 			":-o": 0.1,
 			":-p": 1.2,
 			":-[": -1.6,
-			":-\\":-0.9,
+			":-\\": -0.9,
 			":-c": -1.3,
 			":-|": -0.7,
 			":-||": -2.5,
@@ -844,18 +925,18 @@ angular
 			":p": 1.0,
 			":s": -1.2,
 			":[": -2.0,
-			":\\":-1.3,
+			":\\": -1.3,
 			":]": 2.2,
 			":^)": 2.1,
 			":^*": 2.6,
 			":^/": -1.2,
-			":^\\":-1.0,
+			":^\\": -1.0,
 			":^|": -1.0,
 			":c": -2.1,
 			":c)": 2.0,
 			":o)": 2.1,
 			":o/": -1.4,
-			":o\\":-1.1,
+			":o\\": -1.1,
 			":o|": -0.6,
 			":{": -1.9,
 			":|": -0.4,
@@ -882,7 +963,7 @@ angular
 			"=d": 2.3,
 			"=D": 2.3,
 			"=l": -1.2,
-			"=\\":-1.2,
+			"=\\": -1.2,
 			"=]": 1.6,
 			"=p": 1.3,
 			"=|": -0.8,
@@ -897,7 +978,7 @@ angular
 			">:o": -1.2,
 			">:p": 1.0,
 			">:[": -2.1,
-			">:\\":-1.7,
+			">:\\": -1.7,
 			">;(": -2.9,
 			">;)": 0.1,
 			">_>^": 2.1,
