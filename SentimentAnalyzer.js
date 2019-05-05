@@ -7,6 +7,7 @@ angular
 
 			constructor(text) {
 
+				this.PunctuationList = [".", "!", "?", ",", ";", ":", "-", "'", "\"", "!!", "!!!", "??", "???", "?!?", "!?!", "?!?!", "!?!?"];
 				this._text = text;
 				this.WordsAndEmoticons = this.WordsAndEmoticonsOnly();
 				this.IsAllCapsDifferential = this.AllCapsDifferential(this.WordsAndEmoticons);
@@ -17,13 +18,13 @@ angular
 				return this._text.replace(/[^A-Za-z0-9_\s]/g, '');
 			}
 
+			isUpperCase(str) {
+
+				return str === str.toUpperCase();
+			}
+
 			// Check whether just some words in the input are ALL CAPS
 			AllCapsDifferential(words) {
-
-				var isUpperCase = function(str) {
-
-					return str === str.toUpperCase();
-				}
 
 				var AllCapsWords = 0;
 
@@ -34,7 +35,7 @@ angular
 
 					var word = words[i];
 
-					if (isUpperCase(word))
+					if (this.isUpperCase(word))
 						AllCapsWords++;
 				}
 
@@ -55,9 +56,31 @@ angular
 				return words.filter(word => word.length > 1);
 			}
 
-			WordsAndEmoticonsOnly() {
+			Count(words, word) {
 
-				var PunctuationList = [".", "!", "?", ",", ";", ":", "-", "'", "\"", "!!", "!!!", "??", "???", "?!?", "!?!", "?!?!", "!?!?"];
+				var counts = [];
+
+				if (!Array.isArray(words))
+					return 0;
+
+				for (var i = 0; i < words.length; i++) {
+
+					var key = words[i];
+
+					if (key in counts) {
+
+						counts[key]++;
+
+					} else {
+
+						counts[key] = 1;
+					}
+				}
+
+				return (word in counts) ? counts[word] : 0;
+			}
+
+			WordsAndEmoticonsOnly() {
 
 				// split on white space
 				var wordsAndEmoticons = this._text.split(/\s+/);
@@ -67,42 +90,18 @@ angular
 
 				var wordsOnly = this.WordsOnly();
 
-				var Count = function(words, word) {
-
-					var counts = [];
-
-					if (!Array.isArray(words))
-						return 0;
-
-					for (var i = 0; i < words.length; i++) {
-
-						var key = words[i];
-
-						if (key in counts) {
-
-							counts[key]++;
-
-						} else {
-
-							counts[key] = 1;
-						}
-					}
-
-					return (word in counts) ? counts[word] : 0;
-				}
-
 				for (var i = 0; i < wordsOnly.length; i++) {
 
 					var word = wordsOnly[i];
 
-					for (var j = 0; j < PunctuationList.length; j++) {
+					for (var j = 0; j < this.PunctuationList.length; j++) {
 
-						var punctuation = PunctuationList[j];
+						var punctuation = this.PunctuationList[j];
 
 						// replace all punctuation + word combinations with word
 						var punctuationWord = punctuation.concat(word);
 
-						var x1 = Count(filtered, punctuationWord);
+						var x1 = this.Count(filtered, punctuationWord);
 
 						while (x1 > 0) {
 
@@ -117,13 +116,13 @@ angular
 								filtered[index] = word;
 							}
 
-							x1 = Count(filtered, punctuationWord);
+							x1 = this.Count(filtered, punctuationWord);
 						}
 
 						// do the same as above but word then punctuation
 						var wordPunctuation = word.concat(punctuation);
 
-						var x2 = Count(filtered, wordPunctuation);
+						var x2 = this.Count(filtered, wordPunctuation);
 
 						while (x2 > 0) {
 
@@ -139,7 +138,7 @@ angular
 								filtered[index] = word;
 							}
 
-							x2 = Count(filtered, wordPunctuation);
+							x2 = this.Count(filtered, wordPunctuation);
 						}
 					}
 				}
@@ -392,12 +391,12 @@ angular
 			};
 		};
 
+		$scope.isUpperCase = function(str) {
+
+			return str === str.toUpperCase();
+		};
+
 		$scope.SentimentValence = function(valence, item, i, sentiments) {
-
-			var isUpperCase = function(str) {
-
-				return str === str.toUpperCase();
-			};
 
 			var adjustedValence = valence;
 
@@ -411,7 +410,7 @@ angular
 				adjustedValence = $scope.Lexicon[item_lowercase];
 
 				// check if sentiment laden word is in ALL CAPS (while others aren't)
-				if (isUpperCase(item) && IsCapDifferential) {
+				if ($scope.isUpperCase(item) && IsCapDifferential) {
 
 					if (adjustedValence > 0) {
 
@@ -462,13 +461,22 @@ angular
 			return sentiments;
 		};
 
+		$scope.MapToLowerCase = function(words) {
+
+			var result = words.map(function(word) {
+
+				return word.toLowerCase();
+
+			});
+
+			return result;
+		}
+
 		$scope.NegationCheck = function(valence, words_and_emoticons, start_i, i) {
 
 			var adjustedValence = valence;
 
-			var words_and_emoticons_lower = words_and_emoticons.map(function(word) {
-				return word.toLowerCase()
-			});
+			var words_and_emoticons_lower = $scope.MapToLowerCase(words_and_emoticons);
 
 			if (start_i == 0) {
 
@@ -515,9 +523,7 @@ angular
 
 			var adjustedValence = valence;
 
-			var words_and_emoticons_lower = words_and_emoticons.map(function(word) {
-				return word.toLowerCase()
-			});
+			var words_and_emoticons_lower = $scope.MapToLowerCase(words_and_emoticons);
 
 			var onezero = words_and_emoticons_lower[i - 1] + " " + words_and_emoticons_lower[i];
 			var twoonezero = words_and_emoticons_lower[i - 2] + " " + words_and_emoticons_lower[i - 1] + " " + words_and_emoticons_lower[i - 0];
@@ -595,9 +601,7 @@ angular
 
 		$scope.IsNegated = function(input_words, include_nt = true) {
 
-			var input_words_lower = input_words.map(function(word) {
-				return word.toLowerCase()
-			});
+			var input_words_lower = $scope.MapToLowerCase(input_words);
 
 			for (var i = 0; i < $scope.NEGATE.length; i++) {
 
@@ -640,11 +644,6 @@ angular
 			var scalar = 0.0;
 			var lowercase = word.toLowerCase();
 
-			var isUpperCase = function(str) {
-
-				return str === str.toUpperCase();
-			}
-
 			if (lowercase in $scope.BOOSTER_DICT) {
 
 				scalar = $scope.BOOSTER_DICT[lowercase];
@@ -655,7 +654,7 @@ angular
 				}
 
 				// check if booster/dampener word is in ALLCAPS (while others aren't)
-				if (isUpperCase(word) && IsCapDifferential) {
+				if ($scope.isUpperCase(word) && IsCapDifferential) {
 
 					if (valence > 0) {
 
@@ -674,9 +673,7 @@ angular
 		$scope.ButCheck = function(words_and_emoticons, sentiments) {
 
 			// check for modification in sentiment due to contrastive conjunction 'but'
-			var words_and_emoticons_lower = words_and_emoticons.map(function(word) {
-				return word.toLowerCase()
-			});
+			var words_and_emoticons_lower = $scope.MapToLowerCase(words_and_emoticons);
 
 			var bi = words_and_emoticons_lower.findIndex(function(word) {
 
