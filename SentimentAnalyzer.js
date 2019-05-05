@@ -1,6 +1,6 @@
 angular
 	.module('SentimentAnalyzer', [])
-	.controller('SentimentAnalyzerController', ['$http', '$scope', '$filter', function($http, $scope, $filter) {
+	.controller('SentimentAnalyzerController', ['$scope', function($scope) {
 
 		// Identify sentiment-relevant string-level properties of input text
 		class SentimentText {
@@ -106,9 +106,10 @@ angular
 
 						while (x1 > 0) {
 
-							//var index = filtered.find(punctuationWord);
 							var index = filtered.findIndex(function(word) {
+
 								return word === punctuationWord;
+
 							}, punctuationWord);
 
 							if (index >= 0) {
@@ -128,7 +129,9 @@ angular
 
 							//var index = filtered.find(wordPunctuation);
 							var index = filtered.findIndex(function(word) {
+
 								return word === wordPunctuation;
+
 							}, wordPunctuation);
 
 							if (index >= 0) {
@@ -144,8 +147,6 @@ angular
 				return filtered;
 			}
 		};
-
-		$http.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
 
 		// (empirically derived mean sentiment intensity rating increase for booster words)
 		$scope.B_INCR = 0.293;
@@ -269,10 +270,6 @@ angular
 		$scope.Lexicon = {};
 		$scope.CurrentSentimentText = {};
 		$scope.SentimentScores = {};
-
-		$scope.Initialize = function(text) {
-
-		};
 
 		$scope.MakeLexiconDictionary = function(file) {
 
@@ -624,7 +621,9 @@ angular
 			if (input_words_lower.indexOf("least") > -1) {
 
 				var i = input_words.findIndex(function(word) {
+
 					return word === "least";
+
 				});
 
 				if (i > 0 && input_words[i - 1] !== "at") {
@@ -680,7 +679,9 @@ angular
 			});
 
 			var bi = words_and_emoticons_lower.findIndex(function(word) {
+
 				return word === "but";
+
 			});
 
 			if (bi >= 0) {
